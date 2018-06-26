@@ -12,7 +12,7 @@ const storage = new Storage({
     projectId: projectId
 });
 
-const bucket = storage.bucket('vidmerger');
+const bucket = storage.bucket(bucketName);
 
 //gcloud service account: starting-account-idtuskoafmxb
 
@@ -104,7 +104,7 @@ app.get('/video', (req, res) => {
             'Content-Type': 'video/mp4',
         };
         res.writeHead(200, head);
-        fs.createReadStream(path).pipe(res)
+        fs.createReadStream(fName).pipe(res)
     }
 });
 //
