@@ -1,16 +1,38 @@
 const express = require('express'),
-      bodyParser = require('body-parser'),
-      fluentFfmpeg = require('fluent-ffmpeg'),
-      fs = require('fs');
+    bodyParser = require('body-parser'),
+    fluentFfmpeg = require('fluent-ffmpeg'),
+    fs = require('fs'),
+    Storage = require('@google-cloud/storage'),
+    projectId = 'vidmerger-1530039402349',
+    bucketName = 'vidmerger',
+    fName = 'mergedVideo.mp4',
+    localLink = '127.0.0.1:3000/video';
 
+const storage = new Storage({
+    projectId: projectId
+});
+
+const bucket = storage.bucket('vidmerger');
+
+//gcloud service account: starting-account-idtuskoafmxb
 
 // https://stackoverflow.com/questions/5710358/how-to-retrieve-post-query-parameters
 const app = express();
-app.use( bodyParser.json() );
+app.use(bodyParser.json());
+app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.body.token !== 'secret123') {
+        return res.status(403).json({err: 'Missing token.'});
+    }
+    next();
+});
 //
 
 // Takes in response and array of links returns {link: *link* } as response
-let handleMerge = (res, links ) => {
+let handleMerge = (res, links, remote) => {
+    let handleErr = e => {
+        res.status(500).json({err: e.message});
+    };
+
     let mergedVideo = fluentFfmpeg();
     // https://stackoverflow.com/questions/28877848/merge-multiple-videos-using-node-fluent-ffmpeg
     // https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/blob/master/examples/mergeVideos.js
@@ -19,12 +41,27 @@ let handleMerge = (res, links ) => {
     });
     mergedVideo
         .on('end', () => {
-            res.status(200).json({link: '127.0.0.1:3000/video'});
+            if (!remote) {
+                return res.status(200).json({link: localLink});
+            }
+            let file = bucket.file(`${fName}`);
+            fs.createReadStream(`./${fName}`)
+                .pipe(file.createWriteStream({
+                    resumable: true
+                }))
+                .on('error', handleErr)
+                .on('finish', () => {
+                    file.getSignedUrl({
+                        action: 'read',
+                        expires: '06-28-2018'
+                    }).then(signedUrls => {
+                        console.log(signedUrls);
+                        res.status(200).json({link: signedUrls[0]})
+                    });
+                });
         })
-        .on('error', function(err) {
-            res.status(500).json({err: err.message});
-        })
-        .mergeToFile('./mergedVideo.mp4', './tmp/');
+        .on('error', handleErr)
+        .mergeToFile(`./${fName}`, './tmp/');
     //
 };
 
@@ -37,11 +74,12 @@ let home = (req, res) => {
     });
 };
 
+// Getting video locally
+
 app.get('/', home);
 //https://medium.com/@daspinola/video-stream-with-node-js-and-html5-320b3191a6b6
 app.get('/video', (req, res) => {
-    const path = 'mergedVideo.mp4';
-    const stat = fs.statSync(path);
+    const stat = fs.statSync(fName);
     const fileSize = stat.size;
     const range = req.headers.range;
     if (range) {
@@ -49,9 +87,9 @@ app.get('/video', (req, res) => {
         const start = parseInt(parts[0], 10);
         const end = parts[1]
             ? parseInt(parts[1], 10)
-            : fileSize-1;
-        const chunksize = (end-start)+1;
-        const file = fs.createReadStream(path, {start, end});
+            : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const file = fs.createReadStream(fName, {start, end});
         const head = {
             'Content-Range': `bytes ${start}-${end}/${fileSize}`,
             'Accept-Ranges': 'bytes',
@@ -72,8 +110,10 @@ app.get('/video', (req, res) => {
 //
 
 app.post('/merge', (req, res) => {
-    return handleMerge(res, req.body.links);
+    return handleMerge(res, req.body.links, req.body.remote);
 });
 
 
-app.listen(3000, () => console.log('Running vidmerger!'));
+app.listen(3000, () => {
+    console.log('Running vidmerger!')
+});
