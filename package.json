@@ -1,12 +1,19 @@
 {
   "name": "vidmerger",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simple server to concatenate 2 video files and return a link",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "ffmpeg": "0.0.4",
+    "fluent-ffmpeg": "^2.1.2",
+    "request": "^2.87.0"
+  }
 }
