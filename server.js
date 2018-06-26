@@ -39,11 +39,13 @@ let handleMerge = (res, links, remote) => {
     links.forEach(name => {
         mergedVideo = mergedVideo.addInput(name);
     });
+
     mergedVideo
         .on('end', () => {
             if (!remote) {
                 return res.status(200).json({link: localLink});
             }
+            // gcs node docs
             let file = bucket.file(`${fName}`);
             fs.createReadStream(`./${fName}`)
                 .pipe(file.createWriteStream({
