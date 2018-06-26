@@ -1,4 +1,5 @@
 # vidmerger instructions
+0) Set your GOOGLE_APPLICATION_CREDENTIALS environment variable to the file path of `Vidmerger-af716ef2ceaf.json`
 1) cd into root directory and run `npm install`
 2) run `node server.js` and you should see the message *Running vidmerger!*
 3) make a post request to `127.0.0.1:3000/merge` with `application/json` formatted post data with links specified as so:
