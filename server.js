@@ -9,17 +9,26 @@ const app = express();
 app.use( bodyParser.json() );
 //
 
+// Takes in response and array of links returns {link: *link* } as response
 let handleMerge = (res, links ) => {
     let mergedVideo = fluentFfmpeg();
     // https://stackoverflow.com/questions/28877848/merge-multiple-videos-using-node-fluent-ffmpeg
+    // https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/blob/master/examples/mergeVideos.js
     links.forEach(name => {
-        mergedVideo.addInput(name);
+        mergedVideo = mergedVideo.addInput(name);
     });
-    mergedVideo.mergeToFile('./mergedVideo.mp4', './tmp/');
+    mergedVideo
+        .on('end', () => {
+            res.status(200).json({link: '127.0.0.1:3000/video'});
+        })
+        .on('error', function(err) {
+            res.status(500).json({err: err.message});
+        })
+        .mergeToFile('./mergedVideo.mp4', './tmp/');
     //
-    res.status(200).json({response: 200});
 };
 
+// index for viewing
 let home = (req, res) => {
     fs.readFile('index.html', (err, data) => {
         res.writeHead(200, {'Content-Type': 'text/html'});
